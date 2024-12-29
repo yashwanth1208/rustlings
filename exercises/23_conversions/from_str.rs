@@ -18,6 +18,7 @@ struct Person {
 #[derive(Debug, PartialEq)]
 enum ParsePersonError {
     // Incorrect number of fields
+    Empty,
     BadLen,
     // Empty name field
     NoName,
@@ -41,8 +42,29 @@ enum ParsePersonError {
 impl FromStr for Person {
     type Err = ParsePersonError;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {}
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.is_empty() {
+            return Err(ParsePersonError::Empty);  // Return Empty error for empty string
+        }
+
+        let mut iter = s.split(',');
+        let name = String::from(iter.next().unwrap());
+        if name.is_empty() {
+            return Err(ParsePersonError::NoName);  // Return NoName error if name is empty
+        }
+
+        let age = iter.next().ok_or(ParsePersonError::BadLen)?.parse().map_err(ParsePersonError::ParseInt)?;
+        
+        // Ensure there's no extra data after parsing the name and age
+        if iter.next().is_some() {
+            return Err(ParsePersonError::BadLen);
+        }
+
+        Ok(Person { name, age })
+    }
 }
+
+
 
 fn main() {
     let p = "Mark,20".parse::<Person>();
@@ -56,7 +78,7 @@ mod tests {
 
     #[test]
     fn empty_input() {
-        assert_eq!("".parse::<Person>(), Err(BadLen));
+        assert_eq!("".parse::<Person>(), Err(Empty));
     }
 
     #[test]
